@@ -73,7 +73,7 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # ALLOWED_HOSTS should be set in the environment as a comma-separated list
 raw_allowed = os.getenv('ALLOWED_HOSTS', '')
-ALLOWED_HOSTS = [h.strip() for h in raw_allowed.split(',') if h.strip()] if raw_allowed else []
+ALLOWED_HOSTS = ['amazon-scrape-backend-1.onrender.com', '0.0.0.0']
 
 
 # Application definition
