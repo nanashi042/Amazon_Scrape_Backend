@@ -8,5 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
-.gitignore
- .env
+
+# Ignore environment files containing secrets
+.env
