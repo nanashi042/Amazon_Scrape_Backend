@@ -1,0 +1,249 @@
+{% extends 'Scraping_Event/base.html' %}
+{% load static %}
+
+{% block title %}{{ product.title }} - Amazon Price Tracker{% endblock %}
+
+{% block content %}
+<div class="product-details-section">
+    <div class="container">
+        {% if error %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
+            </div>
+            <a href="/" class="btn-primary">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+        {% else %}
+            <div class="product-container">
+                <!-- Product Image & Basic Info -->
+                <div class="product-image-section">
+                    {% if product.image_url %}
+                        <img src="{{ product.image_url }}" alt="{{ product.title }}" class="product-image">
+                    {% else %}
+                        <div class="no-image">
+                            <i class="fas fa-image"></i>
+                            <p>No image available</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Product Details -->
+                <div class="product-info-section">
+                    <h1>{{ product.title }}</h1>
+                    
+                    <div class="product-meta">
+                        <span class="asin">ASIN: <strong>{{ product.asin }}</strong></span>
+                        <span class="availability availability-{{ product.availability|lower|cut:' ' }}">
+                            <i class="fas fa-check-circle"></i> {{ product.availability }}
+                        </span>
+                    </div>
+
+                    <!-- Price Section -->
+                    <div class="price-section">
+                        <div class="current-price">
+                            {% if product.currency == 'INR' %}
+                                <span class="currency">₹</span>
+                            {% elif product.currency == 'USD' %}
+                                <span class="currency">$</span>
+                            {% elif product.currency == 'GBP' %}
+                                <span class="currency">£</span>
+                            {% elif product.currency == 'EUR' %}
+                                <span class="currency">€</span>
+                            {% else %}
+                                <span class="currency">{{ product.currency }}</span>
+                            {% endif %}
+                            <span class="price">{{ product.current_price }}</span>
+                        </div>
+                        {% if product.original_price and product.original_price != product.current_price %}
+                            <div class="original-price">
+                                <span>Original Price:</span>
+                                {% if product.currency == 'INR' %}
+                                    <strike>₹ {{ product.original_price }}</strike>
+                                {% elif product.currency == 'USD' %}
+                                    <strike>$ {{ product.original_price }}</strike>
+                                {% elif product.currency == 'GBP' %}
+                                    <strike>£ {{ product.original_price }}</strike>
+                                {% elif product.currency == 'EUR' %}
+                                    <strike>€ {{ product.original_price }}</strike>
+                                {% else %}
+                                    <strike>{{ product.currency }} {{ product.original_price }}</strike>
+                                {% endif %}
+                            </div>
+                            {% if product.current_price < product.original_price %}
+                                <div class="discount">
+                                    <span class="discount-label">
+                                        <i class="fas fa-tag"></i>
+                                        Discount: 
+                                        <strong>{{ discount_percent }}% OFF</strong>
+                                    </span>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Rating & Reviews Section -->
+                    <div class="rating-reviews-section">
+                        {% if product.rating %}
+                            <div class="rating-box">
+                                <div class="rating-header">
+                                    <span class="rating-value">{{ product.rating }}</span>
+                                    <span class="out-of">out of 5</span>
+                                </div>
+                                <div class="stars">
+                                    {% for i in "12345" %}
+                                        {% if i|add:"0" <= product.rating %}
+                                            <i class="fas fa-star filled"></i>
+                                        {% elif i|add:"0" <= product.rating|add:"0.5" %}
+                                            <i class="fas fa-star-half-alt filled"></i>
+                                        {% else %}
+                                            <i class="fas fa-star empty"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% if product.number_of_reviews %}
+                            <div class="reviews-box">
+                                <div class="reviews-count">
+                                    <i class="fas fa-comments"></i>
+                                    <strong>{{ product.number_of_reviews }}</strong>
+                                    <span>Customer Reviews</span>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Product Description -->
+                    {% if product.description %}
+                        <div class="description-section">
+                            <h3>Description</h3>
+                            <p>{{ product.description }}</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- Track Price Button -->
+                    <button class="btn-track" onclick="toggleTrackerForm()">
+                        <i class="fas fa-bell"></i> Track Price
+                    </button>
+
+                    <!-- Product Link -->
+                    <a href="{{ product.url }}" target="_blank" class="btn-visit">
+                        <i class="fas fa-external-link-alt"></i> View on Amazon
+                    </a>
+
+                    <!-- Back Button -->
+                    <a href="/" class="btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Home
+                    </a>
+                </div>
+            </div>
+
+            <!-- Price Tracker Form Modal -->
+            <div id="trackerModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Set Price Alert</h2>
+                        <button class="close-btn" onclick="toggleTrackerForm()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <form class="tracker-form" method="post" action="{% url 'create_tracker' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+
+                        <div class="form-group">
+                            <label for="email">Your Email</label>
+                            <input 
+                                type="email" 
+                                id="email" 
+                                name="email" 
+                                placeholder="your@email.com" 
+                                required
+                                class="form-input"
+                            >
+                            <small>We'll email you when the price drops</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="target_price">Target Price
+                                {% if product.currency == 'INR' %}
+                                    <span class="currency-label">(₹)</span>
+                                {% elif product.currency == 'USD' %}
+                                    <span class="currency-label">($)</span>
+                                {% elif product.currency == 'GBP' %}
+                                    <span class="currency-label">(£)</span>
+                                {% elif product.currency == 'EUR' %}
+                                    <span class="currency-label">(€)</span>
+                                {% else %}
+                                    <span class="currency-label">({{ product.currency }})</span>
+                                {% endif %}
+                            </label>
+                            <input 
+                                type="number" 
+                                id="target_price" 
+                                name="target_price" 
+                                placeholder="Enter your target price" 
+                                step="0.01"
+                                max="{{ product.current_price }}"
+                                required
+                                class="form-input"
+                            >
+                            <small>Must be less than current price: 
+                                {% if product.currency == 'INR' %}
+                                    ₹ {{ product.current_price }}
+                                {% elif product.currency == 'USD' %}
+                                    $ {{ product.current_price }}
+                                {% elif product.currency == 'GBP' %}
+                                    £ {{ product.current_price }}
+                                {% elif product.currency == 'EUR' %}
+                                    € {{ product.current_price }}
+                                {% else %}
+                                    {{ product.currency }} {{ product.current_price }}
+                                {% endif %}
+                            </small>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-check"></i> Create Alert
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="toggleTrackerForm()">
+                                Cancel
+                            </button>
+                        </div>
+
+                        {% if tracker_error %}
+                            <div class="alert alert-error">
+                                <i class="fas fa-exclamation-circle"></i> {{ tracker_error }}
+                            </div>
+                        {% endif %}
+
+                        {% if tracker_success %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i> Price alert created successfully! Check your email for confirmation.
+                            </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleTrackerForm() {
+    const modal = document.getElementById('trackerModal');
+    modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('trackerModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

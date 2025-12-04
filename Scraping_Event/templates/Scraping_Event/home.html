@@ -1,0 +1,71 @@
+{% extends 'Scraping_Event/base.html' %}
+{% load static %}
+
+{% block title %}Amazon Price Tracker - Home{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container">
+        <h1>Track Amazon Prices in Real-Time</h1>
+        <p>Paste an Amazon link and get price alerts when it drops to your target price</p>
+        
+        <form class="url-input-form" method="post" action="{% url 'scrape_product' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <input 
+                    type="url" 
+                    name="url" 
+                    placeholder="Paste Amazon product link (e.g., https://www.amazon.in/...)" 
+                    required
+                    class="url-input"
+                >
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-search"></i> Get Details
+                </button>
+            </div>
+            {% if error %}
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div id="features" class="features-section">
+    <div class="container">
+        <h2>How It Works</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-link"></i>
+                </div>
+                <h3>Paste Link</h3>
+                <p>Paste any Amazon product link</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <h3>View Details</h3>
+                <p>See product info, price, rating & reviews</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <h3>Set Alert</h3>
+                <p>Set target price and get email alerts</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <h3>Get Notified</h3>
+                <p>Receive email when price drops</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

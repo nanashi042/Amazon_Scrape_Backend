@@ -369,12 +369,36 @@ def scrape_amazon_product(url):
                         image_url = src
                         break
 
-        # Determine availability with better detection
+        # Determine availability with element-specific checks first
         availability = 'In Stock'
-        if re.search(r'out of stock|unavailable|not available', page_text, re.IGNORECASE):
-            availability = 'Out of Stock'
-        elif re.search(r'only \d+ (left|remaining)', page_text, re.IGNORECASE):
-            availability = 'Limited Stock'
+
+        # Prefer the dedicated availability block if present
+        availability_block = None
+        for sel in ['#availability', '#availability_feature_div', '.availability', "#outOfStock"]:
+            availability_block = soup.select_one(sel)
+            if availability_block:
+                break
+
+        if availability_block:
+            atext = availability_block.get_text(separator=' ').strip()
+            if re.search(r'(out of stock|currently unavailable|temporarily out of stock|unavailable|not available)', atext, re.IGNORECASE):
+                availability = 'Out of Stock'
+            elif re.search(r'only\s*\d+\s*(left|remaining)', atext, re.IGNORECASE):
+                availability = 'Limited Stock'
+            elif re.search(r'(in stock|usually ships|available|in-stock)', atext, re.IGNORECASE):
+                availability = 'In Stock'
+        else:
+            # If no availability block, check for primary purchase buttons (strong signal it's in stock)
+            add_to_cart = soup.select_one('#add-to-cart-button, input#add-to-cart, #buy-now-button')
+            if add_to_cart is not None:
+                # If button exists and is not disabled, assume in stock
+                disabled = add_to_cart.get('disabled')
+                if disabled in (None, False, '', 'false'):
+                    availability = 'In Stock'
+            else:
+                # Fallback to cautious page-wide checks: only mark out-of-stock if clear signals
+                if re.search(r'\b(currently unavailable|out of stock|temporarily out of stock|not available)\b', page_text, re.IGNORECASE):
+                    availability = 'Out of Stock'
 
         return {
             'asin': asin,
