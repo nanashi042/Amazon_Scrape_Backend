@@ -65,13 +65,15 @@ except Exception:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9)jgrpw@eef5k*gxk_t_$nn*se%7@3c-gp0ek32^!4p3vduss('
+# SECURITY: load secret key from environment for production
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-local-placeholder')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG should be False in production. Set via environment variable.
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS should be set in the environment as a comma-separated list
+raw_allowed = os.getenv('ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [h.strip() for h in raw_allowed.split(',') if h.strip()] if raw_allowed else []
 
 
 # Application definition
@@ -89,6 +91,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise should be just after SecurityMiddleware for static file serving
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -126,6 +130,19 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# Allow configuring the database via a single DATABASE_URL env var (12-factor)
+try:
+    import dj_database_url
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    if DATABASE_URL:
+        DATABASES['default'] = dj_database_url.parse(DATABASE_URL, conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', 600)))
+    else:
+        # If no DATABASE_URL provided and DEBUG is False, keep sqlite but warn in logs
+        pass
+except Exception:
+    # dj-database-url not installed; fall back to default sqlite config
+    pass
 
 
 # Password validation
@@ -168,6 +185,12 @@ STATICFILES_DIRS = [
     BASE_DIR / 'Scraping_Event' / 'static',
 ]
 
+# Use WhiteNoise for serving static files in production
+STATICFILES_STORAGE = os.getenv(
+    'STATICFILES_STORAGE',
+    'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -181,3 +204,38 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@amazonpricetracker.com')
+
+# Security-related settings for production
+# Only enable strict security when DEBUG is False unless explicitly overridden
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True' if not DEBUG else False
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'True') == 'True' if not DEBUG else False
+CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'True') == 'True' if not DEBUG else False
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', 3600)) if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True') == 'True'
+SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', 'True') == 'True'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = os.getenv('X_FRAME_OPTIONS', 'DENY')
+
+# If running behind a proxy/load balancer that sets X-Forwarded-Proto
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# CSRF trusted origins (comma-separated list in env)
+raw_csrf = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if raw_csrf:
+    CSRF_TRUSTED_ORIGINS = [u.strip() for u in raw_csrf.split(',') if u.strip()]
+
+# Logging: reasonable defaults to surface errors in production
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+    },
+}
