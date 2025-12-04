@@ -92,7 +92,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     # WhiteNoise should be just after SecurityMiddleware for static file serving
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # We include it only if the package is available to avoid import-time errors
+    # when the environment doesn't have whitenoise installed.
+    # The actual insertion happens below.
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -100,6 +102,16 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Conditionally insert WhiteNoise middleware if the package is installed
+try:
+    import importlib
+    if importlib.util.find_spec('whitenoise') is not None:
+        # insert after SecurityMiddleware (position 1)
+        MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+except Exception:
+    # If anything goes wrong, avoid crashing during import; whitenoise simply won't be used
+    pass
 
 ROOT_URLCONF = 'main_api.urls'
 
