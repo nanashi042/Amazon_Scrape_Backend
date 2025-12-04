@@ -71,7 +71,7 @@ SECRET_KEY = 'django-insecure-9)jgrpw@eef5k*gxk_t_$nn*se%7@3c-gp0ek32^!4p3vduss(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["amazon-scrape-backend.onrender.com"]
 
 
 # Application definition
